@@ -1,0 +1,10 @@
+*.xlsx
+*.pdf
+*.ps1
+*.tmp.*
+gen_bom.ps1
+generate_html.ps1
+generate_html_bom.ps1
+dashboard.html
+logo_b64.txt
+.claude/
