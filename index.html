@@ -97,12 +97,13 @@ const gpd={'2026-03-02':{1:{A:['공휴일','급식x','서정은','김채민','�
 };
 let cur=0;
 
+function toDS(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 function getMonday(){
   var d=new Date(),day=d.getDay(),diff=day===0?-6:1-day,m=new Date(d);
   m.setDate(d.getDate()+diff);
-  return m.toISOString().split("T")[0];
+  return toDS(m);
 }
-function todayStr(){return new Date().toISOString().split("T")[0];}
+function todayStr(){return toDS(new Date());}
 
 function wkLabel(wk){
   var d=new Date(wk+"T00:00:00"),f=new Date(d);
