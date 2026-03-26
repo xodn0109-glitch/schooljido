@@ -37,6 +37,26 @@ td.ga{background:#F8FDFD}
 td.gb{background:#FFFCF5}
 td.cat{background:#74B9FF;color:#fff;font-weight:800;text-align:center;vertical-align:middle;font-size:.85rem;padding:8px 6px;white-space:nowrap;letter-spacing:.5px}
 tr.sep>td{border-top:2px solid #B3E5FC}
+.search-bar{background:#fff;padding:10px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #E3F2FD}
+.search-bar input{flex:1;border:1.5px solid #B3E5FC;border-radius:24px;padding:8px 16px;font-size:.85rem;outline:none;transition:border-color .2s;font-family:inherit}
+.search-bar input:focus{border-color:#00A8FF}
+.search-bar button{background:linear-gradient(135deg,#4FACFE,#00F2FE);color:#fff;border:none;border-radius:24px;padding:8px 18px;font-size:.85rem;font-weight:700;cursor:pointer;transition:opacity .2s;white-space:nowrap;font-family:inherit}
+.search-bar button:hover{opacity:.85}
+.search-bar .s-reset{background:#E1E8ED;color:#555}
+.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:20px;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.15);padding:0}
+.modal-head{background:linear-gradient(135deg,#4FACFE,#00F2FE);color:#fff;padding:16px 20px;border-radius:20px 20px 0 0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:1}
+.modal-head h2{font-size:1rem;font-weight:800}
+.modal-head button{background:rgba(255,255,255,.25);border:none;color:#fff;font-size:1.1rem;width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:16px 20px}
+.sr-section{margin-bottom:16px}
+.sr-section h3{font-size:.9rem;font-weight:700;color:#0984E3;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #E3F2FD}
+.sr-item{display:flex;gap:8px;align-items:baseline;padding:6px 0;border-bottom:1px solid #F0F4F8;font-size:.82rem}
+.sr-item:last-child{border-bottom:none}
+.sr-date{color:#0984E3;font-weight:700;min-width:85px}
+.sr-day{background:#E3F2FD;color:#0984E3;border-radius:4px;padding:1px 6px;font-size:.75rem;font-weight:700;min-width:20px;text-align:center}
+.sr-detail{color:#2D3436}
+.sr-empty{color:#999;font-size:.85rem;text-align:center;padding:24px 0}
 </style>
 </head>
 <body>
@@ -46,6 +66,12 @@ tr.sep>td{border-top:2px solid #B3E5FC}
   <div class="tabs" id="tabs"></div>
   <button class="nbtn" onclick="move(1)">&#9654;</button>
 </div>
+<div class="search-bar">
+  <input type="text" id="sInput" placeholder="성함을 입력하세요 (예: 김현지)" onkeydown="if(event.key==='Enter')doSearch()">
+  <button onclick="doSearch()">🔍 검색</button>
+  <button class="s-reset" onclick="clearSearch()">초기화</button>
+</div>
+<div id="modalArea"></div>
 <main>
   <div class="card"><table id="mainT"></table></div>
 </main>
@@ -161,6 +187,54 @@ function renderContent(){
 
 function go(i){cur=i;renderTabs();renderContent();}
 function move(d){var n=cur+d;if(n>=0&&n<weeks.length)go(n);}
+
+function doSearch(){
+  var name=document.getElementById('sInput').value.trim();
+  if(!name){alert('성함을 입력해주세요.');return;}
+  var dayNames=['월','화','수','목','금'];
+  var results={am:[],gp:[],yaja:[]};
+  for(var w=0;w<weeks.length;w++){
+    var wk=weeks[w],cols=dCols(wk);
+    // 등교지도
+    var aw=amd[wk]||[];
+    for(var d=0;d<5;d++){if(aw[d]&&aw[d]===name)results.am.push({wk:wk,date:cols[d],day:dayNames[d]});}
+    // 급식지도
+    var gw=gpd[wk]||{};
+    for(var g=1;g<=3;g++){var gz=gw[g];if(!gz)continue;
+      for(var d=0;d<5;d++){if(gz.A&&gz.A[d]&&gz.A[d]===name)results.gp.push({wk:wk,date:cols[d],day:dayNames[d],grade:g,zone:'A'});
+        if(gz.B&&gz.B[d]&&gz.B[d]===name)results.gp.push({wk:wk,date:cols[d],day:dayNames[d],grade:g,zone:'B'});}}
+    // 야자감독
+    var yw=yd[wk]||{};
+    for(var g=1;g<=3;g++){var a=yw[g];if(!a)continue;
+      for(var d=0;d<5;d++){if(a[d]&&a[d]===name)results.yaja.push({wk:wk,date:cols[d],day:dayNames[d],grade:g});}}
+  }
+  showResults(name,results);
+}
+
+function showResults(name,r){
+  var total=r.am.length+r.gp.length+r.yaja.length;
+  var html='<div class="modal-bg" onclick="if(event.target===this)closeModal()">';
+  html+='<div class="modal">';
+  html+='<div class="modal-head"><h2>📋 '+name+' 선생님 일정</h2><button onclick="closeModal()">✕</button></div>';
+  html+='<div class="modal-body">';
+  if(total===0){html+='<div class="sr-empty">"'+name+'" 선생님의 일정을 찾을 수 없습니다.<br><small>정확한 성함을 입력해주세요.</small></div>';}
+  else{
+    if(r.am.length){html+='<div class="sr-section"><h3>🌅 등교지도 ('+r.am.length+'회)</h3>';
+      for(var i=0;i<r.am.length;i++)html+='<div class="sr-item"><span class="sr-date">'+r.am[i].date+'</span><span class="sr-day">'+r.am[i].day+'</span></div>';
+      html+='</div>';}
+    if(r.gp.length){html+='<div class="sr-section"><h3>🍽️ 급식지도 ('+r.gp.length+'회)</h3>';
+      for(var i=0;i<r.gp.length;i++)html+='<div class="sr-item"><span class="sr-date">'+r.gp[i].date+'</span><span class="sr-day">'+r.gp[i].day+'</span><span class="sr-detail">'+r.gp[i].grade+'학년 '+r.gp[i].zone+'구역</span></div>';
+      html+='</div>';}
+    if(r.yaja.length){html+='<div class="sr-section"><h3>🌙 야자감독 ('+r.yaja.length+'회)</h3>';
+      for(var i=0;i<r.yaja.length;i++)html+='<div class="sr-item"><span class="sr-date">'+r.yaja[i].date+'</span><span class="sr-day">'+r.yaja[i].day+'</span><span class="sr-detail">'+r.yaja[i].grade+'학년</span></div>';
+      html+='</div>';}
+  }
+  html+='</div></div></div>';
+  document.getElementById('modalArea').innerHTML=html;
+}
+
+function closeModal(){document.getElementById('modalArea').innerHTML='';}
+function clearSearch(){document.getElementById('sInput').value='';closeModal();}
 
 window.onload=function(){
   var tm=getMonday(),idx=weeks.indexOf(tm);
